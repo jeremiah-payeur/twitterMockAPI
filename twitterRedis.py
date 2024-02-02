@@ -38,12 +38,14 @@ class TwitterAPI:
         following = list(self.db.smembers(f"followed_list:{user_id}"))
         tweet_ids = [self.db.zrevrange(f"timeline:{following[i]}", 0, 9) for i in range(len(following))]
         tweets = []
+        # iterate through top ten tweets of all followed users
         for i in range(len(tweet_ids)):
-            tweets.append(self.db.hgetall(f"tweet:{i}"))
+            for tweet_id in tweet_ids[i]:
+                tweets.append(self.db.hgetall(f"tweet:{tweet_id}"))
 
-        sorted_tweets = sorted(tweets, key=lambda x: x.get('time', str(0)), reverse=True)
-        sorted_tweets = [Tweet(tweet['text'], tweet['user'], tweet['time'], tweet['tweet_id'])
-                         for tweet in sorted_tweets if tweet]
+        sorted_tweets = sorted(tweets, key=lambda x: x.get('time', str(0)), reverse=True)[0:10]
+        #sorted_tweets = [Tweet(tweet['text'], tweet['user'], tweet['time'], tweet['tweet_id'])
+        #                 for tweet in sorted_tweets if tweet]
 
         return sorted_tweets
 
@@ -67,7 +69,12 @@ class TwitterAPI:
         })
 
         # adding to users sorted timeline
-        self.db.zadd(f"timeline:{tweet_obj.user}", {time:n})
+        self.db.zadd(f"timeline:{tweet_obj.user}", {n:time})
 
         # increment tweet id
         self.db.incr("next_tweet_id")
+
+    def close(self):
+        """close all connections"""
+        self.db.close()
+        return

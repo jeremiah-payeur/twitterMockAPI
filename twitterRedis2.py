@@ -2,7 +2,6 @@ import redis
 from profiler import Profiler
 from twitterObjects import Tweet
 
-
 class TwitterAPI:
 
     def __init__(self, host="localhost", port=6379, decode=True):
@@ -35,13 +34,12 @@ class TwitterAPI:
         tweet_ids = self.db.zrevrange(f"timeline:{user_id}", 0, 9)
 
         tweets = []
-        for i in range(len(tweet_ids)):
-            tweets.append(self.db.hgetall(f"tweet:{i}"))
+        for tweet_id in tweet_ids:
+            tweets.append(self.db.hgetall(f"tweet:{tweet_id}"))
 
-        sorted_tweets = [Tweet(tweet['text'], tweet['user'], tweet['time'], tweet['tweet_id'])
-                         for tweet in tweets if tweet]
-
-        return sorted_tweets
+        #sorted_tweets = [Tweet(tweet['text'], tweet['user'], tweet['time'], tweet['tweet_id'])
+        #                 for tweet in tweets if tweet]
+        return tweets
 
 
     @Profiler.profile
@@ -65,7 +63,13 @@ class TwitterAPI:
         # adding all elements of tweet to user timeline
         followers = self.db.smembers(f"followers:{tweet_obj.user}")
         for follower in followers:
-            self.db.zadd(f"timeline:{follower}", {time: n})
+            self.db.zadd(f"timeline:{follower}", {n: time})
 
         # increment tweet id
         self.db.incr("next_tweet_id")
+
+
+    def close(self):
+        """close all connections"""
+        self.db.close()
+        return
